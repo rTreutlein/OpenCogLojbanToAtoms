@@ -28,20 +28,3 @@ library
   default-language:    Haskell2010
   c-sources:         hsbracket.c
   ghc-options:       -dynamic -shared -fPIC
-
-executable lojbanToAtoms
-  main-is:             Main.hs
-  build-depends:       base
-                     , opencog-atomspace
-                     , transformers
-  default-language:    Haskell2010
-
-Test-Suite lojban-test
-  hs-source-dirs:      Test
-  main-is:             Main.hs
-  type:                exitcode-stdio-1.0
-  build-depends:       base
-                     , opencog-atomspace
-                     , tasty
-                     , tasty-hunit
-  default-language:    Haskell2010

@@ -9,12 +9,12 @@ import Data.Typeable
 
 import qualified Data.Map as M
 
-type State = ([AtomGen] -> String -> Maybe AtomGen -> Gen LinkT --Gen final link funkction
-             , [AtomGen]                        --Argument List
+type State = ([Atom] -> String -> Maybe Atom -> Atom --Atomfinal link funkction
+             , [Atom]                        --Argument List
              , String                                --Name
-             , Maybe AtomGen                        --Possible context
-             , [(AtomGen,AtomGen -> AtomGen)]   --Other Links
-             ,[Gen VariableT]                   --List of variables for Questions
+             , Maybe Atom                        --Possible context
+             , [(Atom,Atom -> Atom)]   --Other Links
+             ,[Atom]                   --List of variables for Questions
              ,String)                                --Input sentence
 
 type IOState a = StateT State IO a
@@ -22,46 +22,46 @@ type IOState a = StateT State IO a
 emptyState :: String -> State
 emptyState s = (defaultLink,[],"",Nothing,[],[],s)
 
-defaultLink :: [AtomGen] -> String -> Maybe AtomGen -> Gen LinkT
+defaultLink :: [Atom] -> String -> Maybe Atom -> Atom
 defaultLink args name context =
-    let eval = EvaluationLink highTv (PredicateNode name lowTv) (ListLink $ reverse args)
+    let eval = cEvalL highTv (cPN name lowTv) (cLL $ reverse args)
     in case context of
-    Nothing -> Gen eval
-    Just cxt -> Gen ((\c -> ContextLink highTv c eval) `appGen` cxt :: Atom ContextT)
+    Nothing -> eval
+    Just cxt -> Link "ContextLink" [cxt,eval] highTv
 
-addAtom :: (AtomGen,AtomGen -> AtomGen) -> IOState ()
+addAtom :: (Atom,Atom -> Atom) -> IOState ()
 addAtom atom = do
     (l,ar,n,c,at,v,s) <- get
     put (l,ar,n,c,atom:at,v,s)
 
-mergeAtoms :: [(AtomGen,AtomGen -> AtomGen)] -> IOState ()
+mergeAtoms :: [(Atom,Atom -> Atom)] -> IOState ()
 mergeAtoms atoms = do
     (l,ar,n,c,at,v,s) <- get
     put (l,ar,n,c,atoms++at,v,s)
 
-addVar :: (Typeable a,a <~ VariableT) => Atom a -> IOState ()
+addVar :: Atom -> IOState ()
 addVar atom = do
     (l,ar,n,c,at,v,s) <- get
-    put (l,ar,n,c,at,Gen atom : v,s)
+    put (l,ar,n,c,at,atom : v,s)
 
-getVar :: IOState (Gen VariableT)
+getVar :: IOState (Atom)
 getVar = do
     (l,ar,n,c,at,v:vs,s) <- get
     put (l,ar,n,c,at,vs,s)
     return v
 
-addArg :: (Typeable a,a <~ AtomT) => Atom a -> IOState ()
+addArg :: Atom -> IOState ()
 addArg atom = do
     (l,ar,n,c,at,v,s) <- get
-    put (l,Gen atom : ar,n,c,at,v,s)
+    put (l,atom : ar,n,c,at,v,s)
 
-getArg :: IOState AtomGen
+getArg :: IOState Atom
 getArg = do
     (l,e:ar,n,c,at,v,s) <- get
     put (l,ar,n,c,at,v,s)
     return e
 
-addContext :: AtomGen -> String -> IOState ()
+addContext :: Atom -> String -> IOState ()
 addContext atom name = do
     (l,ar,n,c,at,v,s) <- get
     newC <- case c of
@@ -69,23 +69,23 @@ addContext atom name = do
         Just context -> combineConcepts name atom context
     put (l,ar,n,Just newC,at,v,s)
 
-combineConcepts :: String -> AtomGen -> AtomGen -> IOState AtomGen
+combineConcepts :: String -> Atom -> Atom -> IOState Atom
 combineConcepts name c1 c2 = addAtom i1 >> addAtom i2 >> return c3
-    where c3 = Gen $ ConceptNode name lowTv
-          i1 = (c1,(\c1 -> Gen $ myInheritanceLink c1 c3))
-          i2 = (c2,(\c2 -> Gen $ myInheritanceLink c2 c3))
+    where c3 = Node "ConceptNode" name lowTv
+          i1 = (c1,(\c1 -> cInL highTv c1 c3))
+          i2 = (c2,(\c2 -> cInL highTv c2 c3))
 
-getContext :: IOState (Maybe AtomGen)
+getContext :: IOState (Maybe Atom)
 getContext = do
     (l,ar,n,c,at,v,s) <- get
     return c
 
-setLink :: ([AtomGen] -> String -> Maybe AtomGen -> Gen LinkT) -> IOState ()
+setLink :: ([Atom] -> String -> Maybe Atom -> Atom) -> IOState ()
 setLink l = do
     (_,ar,n,c,at,v,s) <- get
     put (l,ar,n,c,at,v,s)
 
-getLink :: IOState ([AtomGen] -> String -> Maybe AtomGen -> Gen LinkT)
+getLink :: IOState ([Atom] -> String -> Maybe Atom -> Atom)
 getLink = do
     (l,ar,n,c,at,v,s) <- get
     return l

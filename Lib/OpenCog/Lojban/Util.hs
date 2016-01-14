@@ -9,58 +9,49 @@ import Data.Typeable
 
 import Tersmu
 
-pattern CN name <-ConceptNode name _
-pattern PN name <-PredicateNode name _
-pattern VN name <-VariableNode name
+pattern CN name <-Node "ConceptNode" name _
+pattern PN name <-Node "PredicateNode" name _
+pattern VN name <-Node "VariableNode" name _
 
-pattern GCN name <-Gen (ConceptNode name _)
-pattern GPN name <-Gen (PredicateNode name _)
-pattern GVN name <-Gen (VariableNode name)
+pattern AL l <- Link "AndLink" l _
+pattern LL l <- Link "ListLink" l _
+pattern SL l <- Link "SetLink" l _
+pattern SSL l <- Link "SatisfyingSetLink" [l] _
+pattern EvalL p a <- Link "EvaluationLink" [p,a] _
+pattern CtxL c a <- Link "ContextLink" [c,a] _
 
-cCN name tv = ConceptNode name tv
-cPN name tv = PredicateNode name tv
-cVN name    = VariableNode name
+cCN name tv = Node "ConceptNode" name tv
+cPN name tv = Node "PredicateNode" name tv
+cVN name    = Node "VariableNode" name noTv
+cAN name    = Node "AnchorNode" name noTv
+cNN name    = Node "NumberNode" name noTv
 
-cGCN name tv = Gen $ ConceptNode name tv
-cGPN name tv = Gen $ PredicateNode name tv
-cGVN name    = Gen $ VariableNode name
+cLL a           = Link "ListLink"                             a noTv
+cSL a           = Link "SetLink"                              a noTv
+cInL tv a b     = Link "InheritanceLink"                  [a,b] tv
+cImL tv a b     = Link "ImplicationLink"                  [a,b] tv
+cIFaoIFL tv a b = Link "And"          [cImL tv a b,cImL tv b a] tv
+cEvalL tv a b   = Link "EvaluationLink"                   [a,b] tv
+cSSL tv a       = Link "SatisfyingSetLink"                  [a] tv
+cExL tv a b     = Link "ExistsLink"                       [a,b] tv
+cFAL tv a b     = Link "ForAllLink"                       [a,b] tv
+cPL     a b     = Link "PutLink"                          [a,b] noTv
+cGL     a       = Link "GetLink"                            [a] noTv
+cAL  tv a       = Link "And"                                  a tv
+cOL  tv a       = Link "Or"                                   a tv
+cNL  tv a       = Link "Not"                                [a] tv
+cCtxL tv a b    = Link "ContextLink"                      [a,b] tv
+cLamdaL tv a b  = Link "LambdaLink"                       [a,b] tv
 
-isGVN :: AtomGen -> a -> (String -> a) -> a
-isGVN (GVN n) _ f = f n
-isGVN _ d _       = d
+isVN :: Atom -> a -> (String -> a) -> a
+isVN (VN n) _ f = f n
+isVN _ d _      = d
 
 highTv :: TruthVal
 highTv = stv 1 0.9
 
 lowTv :: TruthVal
 lowTv = stv 0.000001 0.01
-
-toAtomGen :: Gen LinkT -> Gen AtomT
-toAtomGen a = Gen `appGen` a
-
-returnGen :: (b <~ a, Monad m, Typeable a) => Atom b -> m (Gen a)
-returnGen a = return $ Gen a
-
-myInheritanceLink :: AtomGen -> AtomGen -> Atom InheritanceT
-myInheritanceLink a b = InheritanceLink highTv `appGen` a `appGen` b :: Atom InheritanceT
-
-myImplicationLink :: AtomGen -> AtomGen -> Atom ImplicationT
-myImplicationLink a b = ImplicationLink highTv `appGen` a `appGen` b :: Atom ImplicationT
-
-ifandOnlyIfLink a b = AndLink highTv [Gen (myImplicationLink a b)
-                                     ,Gen (myImplicationLink b a)]
-
-myEvaluationLink :: Gen PredicateT -> AtomGen -> Atom EvaluationT
-myEvaluationLink a b = EvaluationLink highTv `appGen` a `appGen` b
-
-mySatisfyingSetLink :: AtomGen -> Atom SatisfyingSetT
-mySatisfyingSetLink x = SatisfyingSetLink `appGen` x
-
-myExistsLink :: Gen VariableT -> Gen LinkT -> Atom ExistsT
-myExistsLink v link = ExistsLink highTv `appGen` v `appGen` link
-
-myForAllLink :: Gen VariableT -> Gen LinkT -> Atom ForAllT
-myForAllLink v link = ForAllLink highTv `appGen` v `appGen` link --Need better name for VarNode
 
 showJbo :: JboShow t => t -> String
 showJbo a = evalBindful $ logjboshow True a
@@ -72,3 +63,10 @@ if' False _ a = a
 infixr 1 ?
 (?) :: Bool -> a -> a -> a
 (?) = if'
+
+infixr 9 .$
+(.$) :: (b -> c) -> (a1 -> a2 -> b) -> a1 -> a2 -> c
+(.$) f2 f1 a = f2 . (f1 a)
+
+mapfst :: (a -> b) -> (a,t) -> (b,t)
+mapfst f (a,b) = (f a,b)
