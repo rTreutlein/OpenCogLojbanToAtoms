@@ -1,11 +1,15 @@
 flags: {}
 packages:
 - '.'
-- /home/roman/OpenCog/atomspace/opencog/haskell
-- location: /home/roman/Lojban/test/tersmu
+#- location: /home/roman/OpenCog/atomspace/opencog/haskell
+#- location: /home/roman/Lojban/test/tersmu
 
-#extra-deps: [opencog-atomspace-0.1.0.2]
+- location:
+    git: https://github.com/rTreutlein/tersmu-0.2
+    commit: 1d8757430c92dba604504f60281866a07fb69d07
+
+extra-deps: [opencog-atomspace-0.1.0.3]
 resolver: lts-3.6
-extra-lib-dirs: [/usr/local/lib/opencog] #,/home/roman/.stack/programs/x86_64-linux/ghc-7.10.2/lib/ghc-7.10.2/rts]
+extra-lib-dirs: [/usr/local/lib/opencog]
 ghc-options:
     opencog-lojbantoatoms: -lHSrts-ghc7.10.2
