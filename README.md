@@ -4,12 +4,16 @@ This is a library for converting Lojban into Atomese and back again. It will be 
 
 # Dependencies
 
-OpenCog AtomSpace, just follow the instructions in the readme of it's repo to install it:  
 https://github.com/opencog/atomspace
+The easiest way to install this is most likely: https://github.com/opencog/ocpkg
+just clone that repository and run
+```
+  octool -a
+```
 
 # Installation
 
-Simply run:
+After installing all dependencies simply run:
 ```
   stack build
   ./install.sh
