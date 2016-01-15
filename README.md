@@ -4,5 +4,13 @@ This is a library for converting Lojban into Atomese and back again. It will be 
 
 # Dependencies
 
-OpenCog AtomSpace, just follow the instructions in the readme of it's repo to install it
+OpenCog AtomSpace, just follow the instructions in the readme of it's repo to install it:  
 https://github.com/opencog/atomspace
+
+# Installation
+
+Simply run:
+```
+  stack build
+  ./install.sh
+```
