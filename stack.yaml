@@ -6,7 +6,7 @@ packages:
 
 - location:
     git: https://github.com/rTreutlein/tersmu-0.2
-    commit: 91a68f4c815d3ee45fcd07bc839f1d2d0c8bfda1
+    commit: ce9273101c6b0cd92450be7faeed6d7c8f7ba20c
 
 extra-deps: [opencog-atomspace-0.1.0.3]
 resolver: lts-3.6

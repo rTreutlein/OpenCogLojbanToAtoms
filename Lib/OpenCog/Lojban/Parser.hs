@@ -22,6 +22,7 @@ import System.Random
 import Tersmu hiding (addArg)
 
 import Debug.Trace
+import Text.Show.Functions
 mytrace a = traceShow a a
 
 lojbanToAtomese :: Atom -> AtomSpace Atom
@@ -37,11 +38,11 @@ convertJboText :: JboText -> String -> AtomSpace Atom
 convertJboText txt s = do
     let ftxt  = filter (\case {TexticuleProp _ -> True ; _ -> False }) txt
         props = reverse $ map (\(TexticuleProp p) -> p) ftxt
-    cps <- liftIO $ mapM (convertJboProp s) props
+    cps <- liftIO $ mapM (convertJboProp s) $ mytrace props
     case cps of
         [] -> error $ "couldn't convert the lojban text to atomese" ++ s
         _  -> do
-            let ((ids,f,_,q):xs) = cps
+            let ((ids,f,_,q):xs) = mytrace cps
                 gensentence      = f (getConstants ids xs) ""
                 atomsfs          = foldr (\(_,_,at,_) acc -> at++acc) [] cps
                 atoms            = map (\(a,f) -> f a) atomsfs
@@ -85,7 +86,10 @@ getConstants (x:xs) props =
 
 convertJboProp :: String -> JboProp -> IO AtomProp
 convertJboProp s (Modal QTruthModal p) = do
-    (l,ar,n,c,at,v,_) <- execStateT (convertJboProp' p) $ emptyState s
+    d@(l,ar,n,c,at,v,_) <- execStateT (convertJboProp' p) $ emptyState s
+    putStrLn "---------------"
+    print $ mytrace d
+    putStrLn "---------------"
     let varIds   = foldr (\v r -> v `isVN` r $ (\n -> 'B'`notElem` n ? n:r $ r)) [] ar
         args     = map conceptsToVariables .$ replaceVars ar
         atv      = map (mapfst conceptsToVariables) at
@@ -149,29 +153,42 @@ getNode (Link "ContextLink" [c,l] tv) var =
 convertConnected :: Connective -> JboProp -> JboProp -> IOState ()
 convertConnected con p1 p2 = do
     s <- getSentence
-    (l1,args1,n1,c1,atoms1,var1,_) <- liftIO $ execStateT (convertJboProp' p1) $ emptyState s
-    (l2,args2,n2,c2,atoms2,var2,_) <- liftIO $ execStateT (convertJboProp' p2) $ emptyState s
-    let sublink1 =l1 args1 n1 c1
-        sublink2 =l2 args2 n2 c2
+    s1@(l1,args1,n1,c1,atoms1,var1,_) <- liftIO $ execStateT (convertJboProp' p1) $ emptyState s
+    s2@(l2,args2,n2,c2,atoms2,var2,_) <- liftIO $ execStateT (convertJboProp' p2) $ emptyState s
+    liftIO $ print s1
+    liftIO $ putStrLn "--------------------------"
+    liftIO $ print s2
+    let const1   = foldr (\e l -> isVN e l (\_ -> e:l)) [] args1
+        const2   = foldr (\e l -> isVN e l (\_ -> e:l)) [] args2
+        consts   = nub $ const1 ++ const2
+        sublink1 = l1 args1 n1 c1
+        sublink2 = l2 args2 n2 c2
         link = case con of
             Or ->    \_ _ _ -> cOL      highTv [sublink1,sublink2]
             And ->   \_ _ _ -> cAL      highTv [sublink1,sublink2]
             Impl ->  \_ _ _ -> cImL     highTv sublink1 sublink2
             Equiv -> \_ _ _ -> cIFaoIFL highTv sublink1 sublink2
-    put (link, [], "", Nothing, atoms1 ++ atoms2,[],s)
+    liftIO $ putStrLn "--------------------------"
+    liftIO $ print const1
+    liftIO $ putStrLn "--------------------------"
+    liftIO $ print const2
+    liftIO $ putStrLn "--------------------------"
+    put (link, consts, "", Nothing, atoms1 ++ atoms2,var1 ++ var2,s)
 
 convertJboProp' :: JboProp -> IOState ()
 convertJboProp' (Rel (Among s) [t]) = do
     convertJboTerm s
-    cs <- getArg
     convertJboTerm t
-    ct <- getArg
-    addArg $ Link "SubsetLink" [ct,cs] highTv
+    setLink (\args _ ctx -> let sub = Link "SubsetLink" args highTv
+                            in case ctx of
+                                Just c -> cCtxL highTv c sub
+                                Nothing -> sub)
 convertJboProp' (Rel Equal t) = do
     mapM_ convertJboTerm t
-    sct <- getArg
-    fct <- getArg
-    addArg $ Link "SimilarityLink " [fct,sct] highTv
+    setLink (\args _ ctx -> let sim = Link "SimilarityLink" args highTv
+                            in case ctx of
+                                Just c -> cCtxL highTv c sim
+                                Nothing -> sim)
 convertJboProp' (Rel r t) = do
     convertJboRel r
     mapM_ convertJboTerm t
